@@ -4,7 +4,7 @@ import random
 class ArrivalGenerator(threading.Thread):
     """
     Generates visitors arriving at the park over time.
-    Uses a bell curve to simulate realistic arrival patterns.
+    Uses a Poisson distribution to simulate random arrival patterns.
     """
     def __init__(self, clock, park, metrics, total_visitors=100, 
                  park_hours=480, visitor_mix=None):
@@ -29,32 +29,51 @@ class ArrivalGenerator(threading.Thread):
         
     def _generate_arrival_schedule(self):
         """
-        Generate a bell-curve arrival pattern.
-        Most visitors arrive in the middle of the day.
+        Generate a Poisson arrival pattern.
+        Arrivals are randomly distributed with a constant average rate.
         """
         schedule = {}
         
-        # Generate arrival minute for each visitor
-        for vid in range(self.total_visitors):
-            # Bell curve centered at middle of day
-            mean = self.park_hours / 2
-            std_dev = self.park_hours / 6
-            
-            # Generate arrival time (bounded to park hours)
-            arrival_minute = int(random.gauss(mean, std_dev))
-            arrival_minute = max(0, min(self.park_hours - 60, arrival_minute))
-            
-            # Choose visitor type based on mix
-            visitor_type = random.choices(
-                list(self.visitor_mix.keys()),
-                weights=list(self.visitor_mix.values())
+        # Calculate average arrival rate (lambda) per minute
+        arrival_rate = self.total_visitors / self.park_hours
+        
+        # Generate arrivals for each minute using Poisson distribution
+        visitor_id = 0
+        for minute in range(self.park_hours):
+            # Number of arrivals in this minute follows Poisson(lambda)
+            num_arrivals = random.choices(
+                range(0, 10),  # Reasonable upper bound for arrivals per minute
+                weights=[self._poisson_pmf(k, arrival_rate) for k in range(10)]
             )[0]
             
-            if arrival_minute not in schedule:
-                schedule[arrival_minute] = []
-            schedule[arrival_minute].append((vid, visitor_type))
+            # Create visitors for this minute
+            for _ in range(num_arrivals):
+                if visitor_id >= self.total_visitors:
+                    break
+                    
+                # Choose visitor type based on mix
+                visitor_type = random.choices(
+                    list(self.visitor_mix.keys()),
+                    weights=list(self.visitor_mix.values())
+                )[0]
+                
+                if minute not in schedule:
+                    schedule[minute] = []
+                schedule[minute].append((visitor_id, visitor_type))
+                visitor_id += 1
             
+            if visitor_id >= self.total_visitors:
+                break
+        
         return schedule
+    
+    def _poisson_pmf(self, k, lambda_rate):
+        """
+        Calculate Poisson probability mass function.
+        P(X=k) = (lambda^k * e^(-lambda)) / k!
+        """
+        import math
+        return (lambda_rate ** k * math.exp(-lambda_rate)) / math.factorial(k)
         
     def run(self):
         """Release visitors according to the schedule"""
