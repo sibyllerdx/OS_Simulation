@@ -215,6 +215,6 @@ class Metrics:
             print("\nMerch Purchases by Stand:")
             for stand, count in summary['merch_purchases'].items():
                 print(f"  {stand}: {count} purchases")
+
         print(f"Merch Revenue: ${summary['total_merch_revenue']:.2f}")
         print(f"TOTAL Revenue: ${summary['total_revenue']:.2f}")
-        print("="*50 + "\n")

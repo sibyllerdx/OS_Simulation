@@ -22,23 +22,23 @@ from arrival_generator import ArrivalGenerator
 def create_rides():
     """Create ride instances with their specifications"""
     rides_config = [
-        # (name, capacity, duration, break_prob, repair_time, board_window)
-        ('RollerCoaster', 24, 5, 0.03, 15, 3),  # Reduced break probability
-        ('DropTower', 16, 4, 0.04, 12, 2),
-        ('FerrisWheel', 32, 8, 0.01, 10, 4),  # Very reliable
-        ('HauntedHouse', 20, 6, 0.02, 8, 3),
-        ('SpinningTeacups', 16, 4, 0.02, 6, 2),
-        ('BumperCars', 20, 5, 0.03, 7, 3),
-        ('SplashMountain', 28, 7, 0.03, 14, 4),
-        ('SpaceSimulator', 12, 6, 0.05, 20, 2),  # More complex, breaks more
-        ('CarouselHorses', 24, 5, 0.01, 5, 3),  # Very reliable
+        # (name, capacity, duration, break_prob, repair_time, board_window, min_height_cm)
+        ('RollerCoaster', 24, 5, 0.03, 15, 3, 140),  # Reduced break probability
+        ('DropTower', 16, 4, 0.04, 12, 2, 145),
+        ('FerrisWheel', 32, 8, 0.01, 10, 4,0),  # Very reliable
+        ('HauntedHouse', 20, 6, 0.02, 8, 3, 140),
+        ('SpinningTeacups', 16, 4, 0.02, 6, 2, 100),
+        ('BumperCars', 20, 5, 0.03, 7, 3, 110),
+        ('SplashMountain', 28, 7, 0.03, 14, 4, 120),
+        ('SpaceSimulator', 12, 6, 0.05, 20, 2, 120),  # More complex, breaks more
+        ('CarouselHorses', 24, 5, 0.01, 5, 3,0),  # Very reliable
     ]
     
     rides = []
-    for name, capacity, duration, break_prob, repair_time, board_window in rides_config:
+    for name, capacity, duration, break_prob, repair_time, board_window, min_height in rides_config:
         queue = Queue()
         ride = Ride(name, queue, clock, capacity, duration, 
-                   break_prob, repair_time, board_window, metrics)
+                   break_prob, repair_time, board_window, metrics, min_height_cm=min_height)
         rides.append(ride)
         
     return rides
@@ -192,8 +192,7 @@ if __name__ == "__main__":
         
         # Print results
         metrics.print_summary()
-        
-        # Additional stats
+                        # Additional stats
         print("\nRide Statistics:")
         for ride in rides:
             print(f"  {ride.name}: {ride.get_total_riders()} total riders")
@@ -204,7 +203,7 @@ if __name__ == "__main__":
             revenue = truck.get_revenue()
             total_food_revenue += revenue
             print(f"  {truck.name}: ${revenue:.2f}")
-        print(f"  TOTAL: ${total_food_revenue:.2f}")
+            
         
         print("\n" + "="*60)
         print("SIMULATION COMPLETE")

@@ -16,6 +16,7 @@ class Visitor(threading.Thread, ABC):
         self.metrics = metrics
         self.last_bathroom_time = 0
         self.bathroom_interval = 180 
+        self.height_cm = 160  
         self.money = random.randint(20, 200) 
         self.ride_strategy: RideChoiceStrategy = PreferenceStrategy()
         
@@ -143,7 +144,8 @@ class Child(Visitor):
     def __init__(self, vid, park, clock, metrics=None):
         super().__init__(vid, park, clock, metrics)
         self.profile = {'kind': 'Child'}
-        self.merch_probability = 0.2
+        self.merch_probability = 0.1
+        self.height_cm = random.randint(100, 140)
         self.money = random.randint(10, 50) 
         self.ride_prefs = {
             'SpinningTeacups': 5,
@@ -159,7 +161,7 @@ class Child(Visitor):
         if now - self.last_bathroom_time >= self.bathroom_interval:
             self.go_to_bathroom()  # bathroom takes priority this cycle
             return
-        if self.hunger > 5 and random.random() < 0.8:
+        if self.hunger > 5 and random.random() < 0.5:
             self.go_to_food()
 
         if self.money >= 5 and random.random() < self.merch_probability:
@@ -178,7 +180,8 @@ class Tourist(Visitor):
         super().__init__(vid, park, clock, metrics)
         self.profile = {'kind': 'Tourist'}
         self.bathroom_interval = 180
-        self.merch_probability = 0.4
+        self.merch_probability = 0.3
+        self.height_cm = random.randint(150, 190)
         self.money = random.randint(100, 200) 
         self.ride_prefs = {
             'FerrisWheel': 5,
@@ -192,7 +195,7 @@ class Tourist(Visitor):
         if now - self.last_bathroom_time >= self.bathroom_interval:
             self.go_to_bathroom()
             return
-        if self.hunger > 7 and random.random() < 0.6:
+        if self.hunger > 7 and random.random() < 0.4:
             self.go_to_food()
 
         if self.money >= 5 and random.random() < self.merch_probability:
@@ -210,7 +213,8 @@ class AdrenalineAddict(Visitor):
         super().__init__(vid, park, clock, metrics)
         self.profile = {'kind': 'AdrenalineAddict'}
         self.bathroom_interval = 240 
-        self.merch_probability = 0.05
+        self.merch_probability = 0.025
+        self.height_cm = random.randint(140, 200)
         self.money = random.randint(10, 100) 
         self.ride_prefs = {
             'RollerCoaster': 5,
@@ -225,7 +229,7 @@ class AdrenalineAddict(Visitor):
             self.go_to_bathroom()
 
             return  # bathroom takes priority this cycle
-        if self.hunger > 8 and random.random() < 0.4:
+        if self.hunger > 8 and random.random() < 0.1:
             self.go_to_food()
 
         if self.money >= 5 and random.random() < self.merch_probability:

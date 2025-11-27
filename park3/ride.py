@@ -9,7 +9,7 @@ class Ride(threading.Thread):
     """
     def __init__(self, name, queue, clock, capacity=20, 
                  run_duration=5, break_probability=0.02,  # Reduced from 0.05
-                 repair_time=10, board_window=3, metrics=None):
+                 repair_time=10, board_window=3, metrics=None, min_height_cm: int = 0):
         super().__init__(daemon=True)
         self.name = name
         self.queue = queue
@@ -20,6 +20,8 @@ class Ride(threading.Thread):
         self.repair_time = repair_time
         self.board_window = board_window  # How long to wait for riders
         self.metrics = metrics
+        self.min_height_cm = min_height_cm
+
         
         self._open = True
         self._lock = threading.Lock()
