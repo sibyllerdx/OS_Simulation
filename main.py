@@ -18,6 +18,7 @@ from park3.ride import Ride
 from park3.food import FoodTruck
 from park3.park import Park
 from park3.arrival_generator import ArrivalGenerator
+from park_ui import ParkUI
 
 def create_rides():
     """Create ride instances with their specifications"""
@@ -137,6 +138,11 @@ if __name__ == "__main__":
         visitor_mix=VISITOR_MIX
     )
     
+    # Create UI
+    print("Setting up UI...")
+    ui = ParkUI(park, clock, metrics, rides, food_trucks, merch_stands, bathrooms)
+    print("  UI ready!")
+    
     # Start simulation
     print("\n" + "="*60)
     print("STARTING SIMULATION")
@@ -156,26 +162,13 @@ if __name__ == "__main__":
     # Run simulation for specified duration
     try:
         sim_duration = PARK_HOURS * SPEED_FACTOR
-        print(f"Simulation will run for ~{sim_duration:.1f} seconds of real time...\n")
+        print(f"Simulation will run for ~{sim_duration:.1f} seconds of real time...")
+        print("Starting UI visualization...")
+        print("Close the matplotlib window to stop the simulation.\n")
         
-        # Monitor progress and ride states
-        start_time = time.time()
-        last_status_minute = -10
-        while clock.now() < PARK_HOURS:
-            time.sleep(2)
-            current_minute = clock.now()
-            progress = (current_minute / PARK_HOURS) * 100
-            print(f"Simulation progress: {progress:.1f}% (Minute {current_minute}/{PARK_HOURS})")
-            
-            # Periodically show ride states
-            if current_minute - last_status_minute >= 30:
-                print("\n  Current Ride States:")
-                for ride in rides:
-                    state = ride.get_state_name()
-                    queue_size = ride.queue.size()
-                    print(f"    {ride.name}: {state} (Queue: {queue_size})")
-                print()
-                last_status_minute = current_minute
+        # Start UI on main thread (required for macOS)
+        # The UI will block here and run its update loop
+        ui.start()
             
     except KeyboardInterrupt:
         print("\n\nSimulation interrupted by user!")
@@ -185,6 +178,9 @@ if __name__ == "__main__":
         print("\n" + "="*60)
         print("ENDING SIMULATION")
         print("="*60)
+        
+        # Stop UI
+        ui.stop()
         
         clock.stop()
         time.sleep(1)  # Give threads time to finish
