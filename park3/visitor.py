@@ -1,7 +1,7 @@
 import threading
 import random
 from abc import ABC, abstractmethod
-from strategies import RideChoiceStrategy, PreferenceStrategy, RandomStrategy
+from .strategies import RideChoiceStrategy, PreferenceStrategy, RandomStrategy
 
 class Visitor(threading.Thread, ABC):
     """

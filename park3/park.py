@@ -1,5 +1,5 @@
 import threading
-from visitor import ChildCreator, TouristCreator, AdrenalineAddictCreator
+from .visitor import ChildCreator, TouristCreator, AdrenalineAddictCreator
 
 class Park:
     """

@@ -9,15 +9,15 @@ A multi-threaded simulation of an amusement park with:
 """
 
 import time
-from clock import Clock
-from metrics import Metrics
-from bathroom import Toilet
-from queue import Queue
-from merch import MerchStand
-from ride import Ride
-from food import FoodTruck
-from park import Park
-from arrival_generator import ArrivalGenerator
+from park3.clock import Clock
+from park3.metrics import Metrics
+from park3.bathroom import Toilet
+from park3.queue import Queue
+from park3.merch import MerchStand
+from park3.ride import Ride
+from park3.food import FoodTruck
+from park3.park import Park
+from park3.arrival_generator import ArrivalGenerator
 
 def create_rides():
     """Create ride instances with their specifications"""

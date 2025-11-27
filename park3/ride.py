@@ -1,6 +1,6 @@
 import threading
 import random
-from ride_states import RideState, OpenState, BoardingState, BrokenState, MaintenanceState
+from .ride_states import RideState, OpenState, BoardingState, BrokenState, MaintenanceState
 
 class Ride(threading.Thread):
     """
