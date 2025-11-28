@@ -84,6 +84,11 @@ class Park:
             for facility in self._food_facilities:
                 facility.start()
 
+    def start_all_bathrooms(self):
+        with self._bathrooms_lock:
+            for bathroom in self._bathrooms:
+                bathroom.start()
+
     def add_bathroom(self, bathroom):
         """Register a new bathroom in the park."""
         with self._bathrooms_lock:

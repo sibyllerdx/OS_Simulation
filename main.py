@@ -153,7 +153,7 @@ if __name__ == "__main__":
     # Start all facility threads
     park.start_all_rides()
     park.start_all_food_facilities()
-    bathroom.start()
+    park.start_all_bathrooms()
     park.start_all_merch_stands()
     
     # Start arrival generator
