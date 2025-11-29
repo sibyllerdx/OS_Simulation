@@ -1,14 +1,19 @@
 import threading
-from .visitor import ChildCreator, TouristCreator, AdrenalineAddictCreator
+from park3.visitor import ChildCreator, TouristCreator, AdrenalineAddictCreator
+from park3.simple_social_visitor import SocialChildCreator, SocialTouristCreator, SocialAdrenalineAddictCreator
 
 class Park:
     """
     Central coordinator for the amusement park.
-    Manages all rides, food facilities, and visitors.
     """
     def __init__(self, clock, metrics=None):
         self.clock = clock
         self.metrics = metrics
+        
+        # Social systems (can be set after init)
+        self.location_tracker = None
+        self.group_manager = None
+        self.group_coordinator = None
         
         # Resources
         self._rides = []
@@ -24,12 +29,25 @@ class Park:
         self._visitors_lock = threading.Lock()
         self._merch_lock = threading.Lock()
         
-        # Visitor factories
-        self._creators = {
-            'Child': ChildCreator(),
-            'Tourist': TouristCreator(),
-            'AdrenalineAddict': AdrenalineAddictCreator()
-        }
+        # Visitor factories (will be set based on social systems)
+        self._creators = None
+        
+    def _init_creators(self):
+        """Initialize visitor creators based on whether social systems exist"""
+        if self.location_tracker is not None and self.group_manager is not None:
+            # Use social visitors
+            self._creators = {
+                'Child': SocialChildCreator(),
+                'Tourist': SocialTouristCreator(),
+                'AdrenalineAddict': SocialAdrenalineAddictCreator()
+            }
+        else:
+            # Use standard visitors
+            self._creators = {
+                'Child': ChildCreator(),
+                'Tourist': TouristCreator(),
+                'AdrenalineAddict': AdrenalineAddictCreator()
+            }
         
     def add_ride(self, ride):
         """Add a ride to the park"""
@@ -53,11 +71,22 @@ class Park:
             
     def create_visitor(self, visitor_type, vid):
         """Create a visitor using the factory pattern"""
+        # Initialize creators if not done yet
+        if self._creators is None:
+            self._init_creators()
+            
         if visitor_type not in self._creators:
             raise ValueError(f"Unknown visitor type: {visitor_type}")
             
         creator = self._creators[visitor_type]
-        visitor = creator.register_visitor(vid, self, self.clock, self.metrics)
+        
+        # Pass social systems if available
+        visitor = creator.register_visitor(
+            vid, self, self.clock, self.metrics,
+            location_tracker=self.location_tracker,
+            group_manager=self.group_manager,
+            group_coordinator=self.group_coordinator
+        )
         
         with self._visitors_lock:
             self._visitors.append(visitor)
@@ -118,7 +147,6 @@ class Park:
         with self._merch_lock:
             for stand in self._merch_stands:
                 stand.start()
-
                 
     def close_all(self):
         """Close all facilities"""
