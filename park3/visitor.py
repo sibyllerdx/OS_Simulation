@@ -1,7 +1,7 @@
 import threading
 import random
 from abc import ABC, abstractmethod
-from .strategies import RideChoiceStrategy, PreferenceStrategy, RandomStrategy
+from park3.strategies import RideChoiceStrategy, PreferenceStrategy, RandomStrategy
 
 class Visitor(threading.Thread, ABC):
     """
@@ -110,7 +110,7 @@ class Visitor(threading.Thread, ABC):
         stand = random.choice(stands)
         self.park.join_merch_queue(self, stand)
 
-        # Wait until we are no longer in this stand’s queue
+        # Wait until we are no longer in this stand's queue
         while stand.queue.check_person_in(self):
             self.clock.sleep_minutes(1)
             
@@ -124,11 +124,6 @@ class Visitor(threading.Thread, ABC):
         Called when a food purchase attempt fails because the visitor has no money.
         Simply lets the visitor continue with their day.
         """
-        # Reduce hunger slightly (they "looked for food" but didn't eat)
-        # or keep hunger unchanged — your choice.
-        # self.hunger -= 5  # optional
-
-        # Nothing else required; visitor continues after step() loop
         pass
         
     def on_food_served(self, facility_name, minute):
@@ -248,8 +243,12 @@ class VisitorCreator(ABC):
         """Create a visitor instance"""
         pass
         
-    def register_visitor(self, vid, park, clock, metrics):
-        """Create and register a visitor"""
+    def register_visitor(self, vid, park, clock, metrics, **kwargs):
+        """
+        Create and register a visitor.
+        **kwargs allows for optional social system parameters (ignored by base visitors)
+        """
+        # Base visitors ignore social parameters
         visitor = self.factory_method(vid, park, clock, metrics)
         print(f"Visitor {vid} ({visitor.profile['kind']}) entering park...")
         return visitor

@@ -1,14 +1,14 @@
 """
-Amusement Park Simulation
-=========================
-A multi-threaded simulation of an amusement park with:
+Amusement Park Simulation with Social Interactions
+==================================================
+A multi-threaded simulation featuring:
 - 3 visitor types: Children, Tourists, Adrenaline Addicts
-- Multiple rides that can break down
-- Food trucks that generate revenue
-- Realistic arrival patterns and visitor behaviors
+- Social groups (families, friends, couples)
+- Location tracking and social behavior
 """
 
 import time
+import random
 from park3.clock import Clock
 from park3.metrics import Metrics
 from park3.bathroom import Toilet
@@ -20,19 +20,51 @@ from park3.park import Park
 from park3.arrival_generator import ArrivalGenerator
 from park_ui import ParkUI
 
-def create_rides():
-    """Create ride instances with their specifications"""
+# Import simplified social system
+from park3.simple_social import LocationTracker, GroupManager, GroupCoordinator, GroupType
+
+def create_initial_groups(num_groups=30):
+    """Create initial social groups"""
+    groups_created = []
+    
+    for i in range(num_groups):
+        # Group size distribution
+        group_size = random.choices(
+            [2, 3, 4, 5, 6],
+            weights=[0.35, 0.30, 0.20, 0.10, 0.05]
+        )[0]
+        
+        # Group type
+        if group_size == 2:
+            group_type = random.choice([GroupType.COUPLE, GroupType.FRIENDS])
+        elif group_size <= 4:
+            group_type = random.choices(
+                [GroupType.FAMILY, GroupType.FRIENDS],
+                weights=[0.6, 0.4]
+            )[0]
+        else:
+            group_type = GroupType.FAMILY
+        
+        groups_created.append({
+            'size': group_size,
+            'type': group_type,
+            'member_ids': []
+        })
+    
+    return groups_created
+
+def create_rides(clock, metrics):
+    """Create ride instances"""
     rides_config = [
-        # (name, capacity, duration, break_prob, repair_time, board_window, min_height_cm)
-        ('RollerCoaster', 24, 5, 0.03, 15, 3, 140),  # Reduced break probability
+        ('RollerCoaster', 24, 5, 0.03, 15, 3, 140),
         ('DropTower', 16, 4, 0.04, 12, 2, 145),
-        ('FerrisWheel', 32, 8, 0.01, 10, 4,0),  # Very reliable
+        ('FerrisWheel', 32, 8, 0.01, 10, 4, 0),
         ('HauntedHouse', 20, 6, 0.02, 8, 3, 140),
         ('SpinningTeacups', 16, 4, 0.02, 6, 2, 100),
         ('BumperCars', 20, 5, 0.03, 7, 3, 110),
         ('SplashMountain', 28, 7, 0.03, 14, 4, 120),
-        ('SpaceSimulator', 12, 6, 0.05, 20, 2, 120),  # More complex, breaks more
-        ('CarouselHorses', 24, 5, 0.01, 5, 3,0),  # Very reliable
+        ('SpaceSimulator', 12, 6, 0.05, 20, 2, 120),
+        ('CarouselHorses', 24, 5, 0.01, 5, 3, 0),
     ]
     
     rides = []
@@ -41,11 +73,9 @@ def create_rides():
         ride = Ride(name, queue, clock, capacity, duration, 
                    break_prob, repair_time, board_window, metrics, min_height_cm=min_height)
         rides.append(ride)
-        
     return rides
 
-def create_food_trucks(num_trucks):
-    """Create food truck instances"""
+def create_food_trucks(clock, metrics, num_trucks):
     trucks = []
     for i in range(num_trucks):
         queue = Queue()
@@ -53,7 +83,7 @@ def create_food_trucks(num_trucks):
         trucks.append(truck)
     return trucks
 
-def create_merch_stands(num_stands):
+def create_merch_stands(clock, metrics, num_stands):
     stands = []
     for i in range(num_stands):
         q = Queue()
@@ -61,19 +91,28 @@ def create_merch_stands(num_stands):
         stands.append(stand)
     return stands
 
+def create_bathrooms(clock, metrics, num_bathrooms):
+    bathrooms = []
+    for i in range(num_bathrooms):
+        q = Queue()
+        bathroom = Toilet(f"Bathroom-{i+1}", q, clock, metrics)
+        bathrooms.append(bathroom)
+    return bathrooms
+
 if __name__ == "__main__":
     print("\n" + "="*60)
-    print("AMUSEMENT PARK SIMULATION")
+    print("AMUSEMENT PARK SIMULATION WITH SOCIAL GROUPS")
     print("="*60)
     
-    # Simulation parameters
+    # Parameters
     TOTAL_VISITORS = 300
-    PARK_HOURS = 480  # 8 hours in simulated minutes
-    SPEED_FACTOR = 0.05  # 0.05 real seconds = 1 sim minute (fast simulation)
+    PARK_HOURS = 480
+    SPEED_FACTOR = 0.05
     NUM_FOOD_TRUCKS = 5
-    NUM_MERCH_STANDS = 3 
+    NUM_MERCH_STANDS = 3
+    NUM_BATHROOMS = 5
+    NUM_INITIAL_GROUPS = 30
     
-    # Visitor mix
     VISITOR_MIX = {
         'Child': 0.3,
         'Tourist': 0.5,
@@ -84,64 +123,82 @@ if __name__ == "__main__":
     print(f"  Total Visitors: {TOTAL_VISITORS}")
     print(f"  Park Hours: {PARK_HOURS} minutes")
     print(f"  Speed Factor: {SPEED_FACTOR}s per sim minute")
-    print(f"  Visitor Mix: {VISITOR_MIX}")
-    print(f"  Food Trucks: {NUM_FOOD_TRUCKS}")
+    print(f"  Initial Groups: {NUM_INITIAL_GROUPS}")
     
-    # Initialize core systems
+    # Initialize systems
     clock = Clock(speed_factor=SPEED_FACTOR)
     metrics = Metrics(db_path="park_metrics.sqlite")
-    park = Park(clock, metrics)
     
-    # Create and add rides
-    print("\nSetting up rides...")
-    rides = create_rides()
+    # Social systems
+    print("\nInitializing social systems...")
+    location_tracker = LocationTracker()
+    group_manager = GroupManager()
+    group_coordinator = GroupCoordinator(group_manager, location_tracker)
+    print("  Social systems ready!")
+    
+    # Create park
+    park = Park(clock, metrics)
+    park.location_tracker = location_tracker
+    park.group_manager = group_manager
+    park.group_coordinator = group_coordinator
+    
+    # Create facilities
+    print("\nSetting up facilities...")
+    rides = create_rides(clock, metrics)
     for ride in rides:
         park.add_ride(ride)
-    print(f"  Created {len(rides)} rides")
     
-    # Create and add food trucks
-    print("Setting up food trucks...")
-    food_trucks = create_food_trucks(NUM_FOOD_TRUCKS)
+    food_trucks = create_food_trucks(clock, metrics, NUM_FOOD_TRUCKS)
     for truck in food_trucks:
         park.add_food_facility(truck)
-    print(f"  Created {NUM_FOOD_TRUCKS} food trucks")
-
-    #Create merch shops
-    print("Setting up merch stands...")
-    merch_stands = create_merch_stands(NUM_MERCH_STANDS)
+    
+    merch_stands = create_merch_stands(clock, metrics, NUM_MERCH_STANDS)
     for stand in merch_stands:
         park.add_merch_stand(stand)
-    print(f"  Created {NUM_MERCH_STANDS} merch stands")
-
-
-    #Create the bathrooms 
-    num_bathrooms = 5
-    bathrooms = []
-
-    for i in range(num_bathrooms):
-        q = Queue()
-        bathroom = Toilet(
-            name=f"Bathroom-{i+1}",
-            queue=q,
-            clock=clock,
-            metrics=metrics
-        )
+    
+    bathrooms = create_bathrooms(clock, metrics, NUM_BATHROOMS)
+    for bathroom in bathrooms:
         park.add_bathroom(bathroom)
-        bathrooms.append(bathroom)
-
+    
+    print(f"  Created {len(rides)} rides, {NUM_FOOD_TRUCKS} food trucks, "
+          f"{NUM_MERCH_STANDS} merch stands, {NUM_BATHROOMS} bathrooms")
+    
+    # Create groups
+    print("\nCreating social groups...")
+    initial_groups = create_initial_groups(NUM_INITIAL_GROUPS)
+    total_group_members = sum(g['size'] for g in initial_groups)
+    print(f"  Created {len(initial_groups)} groups with {total_group_members} members")
+    print(f"  Solo visitors: {TOTAL_VISITORS - total_group_members}")
     
     # Create arrival generator
     arrival_gen = ArrivalGenerator(
         clock, park, metrics, 
         total_visitors=TOTAL_VISITORS,
         park_hours=PARK_HOURS,
-        visitor_mix=VISITOR_MIX
+        visitor_mix=VISITOR_MIX,
+        initial_groups=initial_groups
     )
     
+    # Register groups AFTER arrival generator fills member_ids
+    print("\nRegistering groups...")
+    groups_registered = 0
+    for group_info in initial_groups:
+        if group_info['member_ids']:
+            group_manager.create_group(
+                group_info['type'],
+                group_info['member_ids']
+            )
+            groups_registered += 1
+    print(f"  Registered {groups_registered} groups")
+    
+    # Verify registration
+    stats = group_manager.get_statistics()
+    print(f"  Verification: {stats['total_groups']} groups, "
+          f"{stats['total_visitors_in_groups']} visitors in groups")
+    
     # Create UI
-    print("Setting up UI...")
+    print("\nSetting up UI...")
     ui = ParkUI(park, clock, metrics, rides, food_trucks, merch_stands, bathrooms)
-    print("  UI ready!")
     
     # Start simulation
     print("\n" + "="*60)
@@ -150,58 +207,78 @@ if __name__ == "__main__":
     
     clock.start()
     
-    # Start all facility threads
+    # Start facilities
     park.start_all_rides()
     park.start_all_food_facilities()
     park.start_all_bathrooms()
     park.start_all_merch_stands()
     
-    # Start arrival generator
+    # Start arrivals
     arrival_gen.start()
     
-    # Run simulation for specified duration
+    # Run
     try:
         sim_duration = PARK_HOURS * SPEED_FACTOR
-        print(f"Simulation will run for ~{sim_duration:.1f} seconds of real time...")
-        print("Starting UI visualization...")
-        print("Close the matplotlib window to stop the simulation.\n")
+        print(f"Simulation will run for ~{sim_duration:.1f} seconds...")
+        print("Close the matplotlib window to stop.\n")
         
-        # Start UI on main thread (required for macOS)
-        # The UI will block here and run its update loop
         ui.start()
             
     except KeyboardInterrupt:
-        print("\n\nSimulation interrupted by user!")
+        print("\n\nInterrupted!")
         
     finally:
-        # Stop simulation
         print("\n" + "="*60)
         print("ENDING SIMULATION")
         print("="*60)
         
-        # Stop UI
         ui.stop()
-        
         clock.stop()
-        time.sleep(1)  # Give threads time to finish
+        time.sleep(1)
         park.close_all()
         
         # Print results
         metrics.print_summary()
-                        # Additional stats
-        print("\nRide Statistics:")
+        
+        # Social statistics
+        print("\n" + "="*50)
+        print("SOCIAL GROUP SUMMARY")
+        print("="*50)
+        
+        social_stats = group_manager.get_statistics()
+        print(f"Total Groups Created: {social_stats['total_groups']}")
+        print(f"Visitors in Groups: {social_stats['total_visitors_in_groups']}")
+        print(f"Solo Visitors: {TOTAL_VISITORS - social_stats['total_visitors_in_groups']}")
+        print(f"Active Groups (still in park): {social_stats['active_groups']}")
+        
+        if social_stats['group_size_distribution']:
+            print("\nGroup Size Distribution:")
+            for size, count in sorted(social_stats['group_size_distribution'].items()):
+                print(f"  Size {size}: {count} groups")
+        
+        if social_stats['group_types']:
+            print("\nGroup Types:")
+            for gtype, count in social_stats['group_types'].items():
+                print(f"  {gtype}: {count} groups")
+        else:
+            print("\nNo group data available")
+        
+        print("\nLocation Distribution (visitors still in park):")
+        loc_summary = location_tracker.get_location_summary()
+        if loc_summary:
+            for location, count in sorted(loc_summary.items()):
+                print(f"  {location}: {count} visitors")
+        else:
+            print("  All visitors have left the park")
+        
+        print("\n" + "="*50)
+        print("RIDE STATISTICS")
+        print("="*50)
         for ride in rides:
-            print(f"  {ride.name}: {ride.get_total_riders()} total riders")
-            
-        print("\nFood Revenue by Truck:")
-        total_food_revenue = 0
-        for truck in food_trucks:
-            revenue = truck.get_revenue()
-            total_food_revenue += revenue
-            print(f"  {truck.name}: ${revenue:.2f}")
-            
+            print(f"  {ride.name}: {ride.get_total_riders()} riders")
         
         print("\n" + "="*60)
         print("SIMULATION COMPLETE")
         print("="*60 + "\n")
+        
         metrics.close()
