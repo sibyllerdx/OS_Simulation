@@ -14,6 +14,7 @@ class Park:
         self.location_tracker = None
         self.group_manager = None
         self.group_coordinator = None
+
         
         # Resources
         self._rides = []
@@ -31,6 +32,10 @@ class Park:
         
         # Visitor factories (will be set based on social systems)
         self._creators = None
+
+        self.cleanliness_manager = None
+        self.staff_manager = None
+    
         
     def _init_creators(self):
         """Initialize visitor creators based on whether social systems exist"""
@@ -170,3 +175,13 @@ class Park:
         """Get total number of visitors created"""
         with self._visitors_lock:
             return len(self._visitors)
+        
+    def start_cleanliness_degradation(self):
+        """Start background cleanliness degradation"""
+        if self.cleanliness_manager:
+            degradation_thread = threading.Thread(
+                target=self.cleanliness_manager.periodic_degradation,
+                args=(self.clock,),
+                daemon=True
+            )
+            degradation_thread.start()

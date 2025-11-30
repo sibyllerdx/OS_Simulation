@@ -20,21 +20,26 @@ from park3.park import Park
 from park3.arrival_generator import ArrivalGenerator
 from park_ui import ParkUI
 
-# Import simplified social system
+# Social systems
 from park3.simple_social import LocationTracker, GroupManager, GroupCoordinator, GroupType
+
+# Staff systems
+from park3.staff import (
+    StaffManager, CleanlinessManager,
+    RideOperator, SecurityGuard, Janitor,
+    StaffSkill, StaffType
+)
 
 def create_initial_groups(num_groups=30):
     """Create initial social groups"""
     groups_created = []
     
     for i in range(num_groups):
-        # Group size distribution
         group_size = random.choices(
             [2, 3, 4, 5, 6],
             weights=[0.35, 0.30, 0.20, 0.10, 0.05]
         )[0]
         
-        # Group type
         if group_size == 2:
             group_type = random.choice([GroupType.COUPLE, GroupType.FRIENDS])
         elif group_size <= 4:
@@ -54,7 +59,6 @@ def create_initial_groups(num_groups=30):
     return groups_created
 
 def create_rides(clock, metrics):
-    """Create ride instances"""
     rides_config = [
         ('RollerCoaster', 24, 5, 0.03, 15, 3, 140),
         ('DropTower', 16, 4, 0.04, 12, 2, 145),
@@ -99,9 +103,61 @@ def create_bathrooms(clock, metrics, num_bathrooms):
         bathrooms.append(bathroom)
     return bathrooms
 
+def create_staff(clock, park, rides):
+    """Create all staff members"""
+    staff_manager = StaffManager()
+    
+    # Ride operators (1 per ride)
+    for i, ride in enumerate(rides):
+        skill = random.choices(
+            [StaffSkill.TRAINEE, StaffSkill.REGULAR, StaffSkill.EXPERIENCED, StaffSkill.EXPERT],
+            weights=[0.15, 0.55, 0.25, 0.05]
+        )[0]
+        
+        operator = RideOperator(
+            staff_id=i,
+            name=f"Op-{ride.name[:4]}",
+            clock=clock,
+            park=park,
+            assigned_ride=ride,
+            skill_level=skill
+        )
+        staff_manager.add_staff(operator)
+    
+    # Security guards (5 zones)
+    patrol_zones = ["north", "south", "east", "west", "central"]
+    for i, zone in enumerate(patrol_zones):
+        skill = random.choice([StaffSkill.REGULAR, StaffSkill.EXPERIENCED])
+        guard = SecurityGuard(
+            staff_id=100 + i,
+            name=f"Sec-{zone[:3].upper()}",
+            clock=clock,
+            park=park,
+            patrol_area=zone,
+            skill_level=skill
+        )
+        staff_manager.add_staff(guard)
+    
+    # Janitors (5 zones)
+    cleaning_zones = ["rides", "food_court", "bathrooms", "pathways", "entrance"]
+    for i, zone in enumerate(cleaning_zones):
+        skill = random.choice([StaffSkill.REGULAR, StaffSkill.EXPERIENCED])
+        janitor = Janitor(
+            staff_id=200 + i,
+            name=f"Jan-{zone[:3].upper()}",
+            clock=clock,
+            park=park,
+            assigned_zone=zone,
+            skill_level=skill
+        )
+        staff_manager.add_staff(janitor)
+    
+    return staff_manager
+
 if __name__ == "__main__":
     print("\n" + "="*60)
-    print("AMUSEMENT PARK SIMULATION WITH SOCIAL GROUPS")
+    print("AMUSEMENT PARK SIMULATION")
+    print("With Social Groups and Staff Management")
     print("="*60)
     
     # Parameters
@@ -122,7 +178,6 @@ if __name__ == "__main__":
     print(f"\nConfiguration:")
     print(f"  Total Visitors: {TOTAL_VISITORS}")
     print(f"  Park Hours: {PARK_HOURS} minutes")
-    print(f"  Speed Factor: {SPEED_FACTOR}s per sim minute")
     print(f"  Initial Groups: {NUM_INITIAL_GROUPS}")
     
     # Initialize systems
@@ -134,13 +189,17 @@ if __name__ == "__main__":
     location_tracker = LocationTracker()
     group_manager = GroupManager()
     group_coordinator = GroupCoordinator(group_manager, location_tracker)
-    print("  Social systems ready!")
+    
+    # Staff systems
+    print("Initializing staff systems...")
+    cleanliness_manager = CleanlinessManager()
     
     # Create park
     park = Park(clock, metrics)
     park.location_tracker = location_tracker
     park.group_manager = group_manager
     park.group_coordinator = group_coordinator
+    park.cleanliness_manager = cleanliness_manager
     
     # Create facilities
     print("\nSetting up facilities...")
@@ -160,15 +219,22 @@ if __name__ == "__main__":
     for bathroom in bathrooms:
         park.add_bathroom(bathroom)
     
-    print(f"  Created {len(rides)} rides, {NUM_FOOD_TRUCKS} food trucks, "
-          f"{NUM_MERCH_STANDS} merch stands, {NUM_BATHROOMS} bathrooms")
+    print(f"  ✓ {len(rides)} rides, {NUM_FOOD_TRUCKS} food trucks")
+    
+    # Create staff
+    print("\nHiring staff...")
+    staff_manager = create_staff(clock, park, rides)
+    park.staff_manager = staff_manager
+    print(f"  ✓ {staff_manager.get_staff_count()} staff members hired")
+    print(f"    - {staff_manager.get_staff_count(StaffType.RIDE_OPERATOR)} ride operators")
+    print(f"    - {staff_manager.get_staff_count(StaffType.SECURITY)} security guards")
+    print(f"    - {staff_manager.get_staff_count(StaffType.JANITOR)} janitors")
     
     # Create groups
     print("\nCreating social groups...")
     initial_groups = create_initial_groups(NUM_INITIAL_GROUPS)
     total_group_members = sum(g['size'] for g in initial_groups)
-    print(f"  Created {len(initial_groups)} groups with {total_group_members} members")
-    print(f"  Solo visitors: {TOTAL_VISITORS - total_group_members}")
+    print(f"  ✓ {len(initial_groups)} groups ({total_group_members} visitors)")
     
     # Create arrival generator
     arrival_gen = ArrivalGenerator(
@@ -179,25 +245,15 @@ if __name__ == "__main__":
         initial_groups=initial_groups
     )
     
-    # Register groups AFTER arrival generator fills member_ids
-    print("\nRegistering groups...")
-    groups_registered = 0
+    # Register groups
     for group_info in initial_groups:
         if group_info['member_ids']:
             group_manager.create_group(
                 group_info['type'],
                 group_info['member_ids']
             )
-            groups_registered += 1
-    print(f"  Registered {groups_registered} groups")
-    
-    # Verify registration
-    stats = group_manager.get_statistics()
-    print(f"  Verification: {stats['total_groups']} groups, "
-          f"{stats['total_visitors_in_groups']} visitors in groups")
     
     # Create UI
-    print("\nSetting up UI...")
     ui = ParkUI(park, clock, metrics, rides, food_trucks, merch_stands, bathrooms)
     
     # Start simulation
@@ -207,20 +263,20 @@ if __name__ == "__main__":
     
     clock.start()
     
-    # Start facilities
+    # Start all systems
     park.start_all_rides()
     park.start_all_food_facilities()
     park.start_all_bathrooms()
     park.start_all_merch_stands()
-    
-    # Start arrivals
+    staff_manager.start_all_staff()
+    park.start_cleanliness_degradation()
     arrival_gen.start()
     
     # Run
     try:
         sim_duration = PARK_HOURS * SPEED_FACTOR
-        print(f"Simulation will run for ~{sim_duration:.1f} seconds...")
-        print("Close the matplotlib window to stop.\n")
+        print(f"Simulation running for ~{sim_duration:.1f} seconds...")
+        print("Close matplotlib window to stop.\n")
         
         ui.start()
             
@@ -237,45 +293,62 @@ if __name__ == "__main__":
         time.sleep(1)
         park.close_all()
         
-        # Print results
+        # Print all summaries
         metrics.print_summary()
         
-        # Social statistics
+        # Social stats
         print("\n" + "="*50)
         print("SOCIAL GROUP SUMMARY")
         print("="*50)
-        
         social_stats = group_manager.get_statistics()
-        print(f"Total Groups Created: {social_stats['total_groups']}")
+        print(f"Total Groups: {social_stats['total_groups']}")
         print(f"Visitors in Groups: {social_stats['total_visitors_in_groups']}")
         print(f"Solo Visitors: {TOTAL_VISITORS - social_stats['total_visitors_in_groups']}")
-        print(f"Active Groups (still in park): {social_stats['active_groups']}")
         
         if social_stats['group_size_distribution']:
-            print("\nGroup Size Distribution:")
+            print("\nGroup Sizes:")
             for size, count in sorted(social_stats['group_size_distribution'].items()):
                 print(f"  Size {size}: {count} groups")
         
-        if social_stats['group_types']:
-            print("\nGroup Types:")
-            for gtype, count in social_stats['group_types'].items():
-                print(f"  {gtype}: {count} groups")
-        else:
-            print("\nNo group data available")
+        # Staff stats
+        print("\n" + "="*50)
+        print("STAFF PERFORMANCE SUMMARY")
+        print("="*50)
+        staff_stats = staff_manager.get_statistics()
+        print(f"Total Staff: {staff_stats['total_staff']}")
         
-        print("\nLocation Distribution (visitors still in park):")
-        loc_summary = location_tracker.get_location_summary()
-        if loc_summary:
-            for location, count in sorted(loc_summary.items()):
-                print(f"  {location}: {count} visitors")
-        else:
-            print("  All visitors have left the park")
+        if 'performance' in staff_stats:
+            perf = staff_stats['performance']
+            if 'incidents_handled' in perf:
+                print(f"\nSecurity Performance:")
+                print(f"  Incidents Handled: {perf['incidents_handled']}")
+                print(f"  Lost Children Found: {perf['children_found']}")
+            
+            if 'areas_cleaned' in perf:
+                print(f"\nJanitor Performance:")
+                print(f"  Areas Cleaned: {perf['areas_cleaned']}")
+        
+        # Cleanliness
+        print("\n" + "="*50)
+        print("PARK CLEANLINESS")
+        print("="*50)
+        clean_summary = cleanliness_manager.get_summary()
+        print(f"Average Cleanliness: {clean_summary['average']:.1f}%\n")
+        
+        for zone, level in sorted(clean_summary['zones'].items()):
+            if level >= 70:
+                status = "✓ Clean"
+            elif level >= 40:
+                status = "⚠ Needs Attention"
+            else:
+                status = "✗ Dirty"
+            print(f"  {zone:15} {level:5.1f}%  {status}")
         
         print("\n" + "="*50)
         print("RIDE STATISTICS")
         print("="*50)
         for ride in rides:
-            print(f"  {ride.name}: {ride.get_total_riders()} riders")
+            print(f"  {ride.name:20} {ride.get_total_riders():4} riders")
         
         print("\n" + "="*60)
         print("SIMULATION COMPLETE")
