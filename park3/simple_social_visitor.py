@@ -132,6 +132,8 @@ class SocialVisitor(threading.Thread, ABC):
         """Join a ride queue"""
         ride = self._choose_ride()
         if ride:
+            if self.park.cleanliness_manager:
+                self.park.cleanliness_manager.degrade_zone('rides', 0.5)
             if self.location_tracker:
                 self.location_tracker.update_location(self.vid, Location.RIDE, ride.name)
             
@@ -147,6 +149,8 @@ class SocialVisitor(threading.Thread, ABC):
             return
         
         bathroom = random.choice(bathrooms)
+        if self.park.cleanliness_manager:
+            self.park.cleanliness_manager.degrade_zone('bathrooms', 1.0)
         
         if self.location_tracker:
             self.location_tracker.update_location(self.vid, Location.BATHROOM, bathroom.name)
@@ -161,6 +165,8 @@ class SocialVisitor(threading.Thread, ABC):
     def go_to_food(self):
         """Join food queue"""
         facility = random.choice(self.park.get_food_facilities())
+        if self.park.cleanliness_manager:
+            self.park.cleanliness_manager.degrade_zone('food_court', 0.8)
         
         if self.location_tracker:
             self.location_tracker.update_location(self.vid, Location.FOOD, facility.name)
