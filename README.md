@@ -50,9 +50,7 @@ Core Logic
 
 - `queue.py`: Thread-safe queue implementation used by rides, food trucks, bathrooms, and merch stands.
 
-- `visitor.py`: Defines the base visitor types (Child, Tourist, AdrenalineAddict) and their behaviours.
-
-- `simple_social_visitor.py`: Social visitor variants that coordinate actions through group and location logic.
+- `simple_social_visitor.py`: Defines the base visitor types (Child, Tourist, AdrenalineAddict) and their behaviours. Handles Group logic.
 
 - `simple_social.py`: Implements social groups, location tracking, and group coordination logic.
 
@@ -60,13 +58,21 @@ Core Logic
 
 - `food.py`: Food truck logic and service behaviour.
 
+- `staff.py`: Implements the different kind of staff in the park and their behaviour. 
+
 - `merch.py`: Merchandise stand operations.
+
+- `metrics.py`: Tracks and store the metrics of the simulation. 
 
 - `bathroom.py`: Bathroom handling and queuing logic.
 
 - `arrival_generator.py`: Generates and starts visitors over time using Poisson arrival patterns.
 
 - `park_ui.py`: Implements the real-time graphical interface for monitoring the simulation.
+
+- `park_metrics.sqlite`: Store the data of the simulation.
+
+- `view_metrics.py`: Read the data in the SQLite database.
 
 ## Ideas for Future Improvements
 
