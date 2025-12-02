@@ -128,6 +128,10 @@ class ArrivalGenerator(threading.Thread):
         while not self.clock.should_stop() and current_minute < self.park_hours:
             now = self.clock.now()
             
+            # Safety check: stop if we've gone past park hours
+            if now >= self.park_hours:
+                break
+            
             # Check if we've reached the next minute
             if now >= current_minute:
                 # Release any visitors scheduled for this minute

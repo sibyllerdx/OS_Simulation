@@ -1,4 +1,5 @@
 import threading
+import random
 from park3.simple_social_visitor import SocialChildCreator, SocialTouristCreator, SocialAdrenalineAddictCreator
 
 class Park:
@@ -149,6 +150,30 @@ class Park:
                 daemon=True
             )
             degradation_thread.start()
+    
+    def start_maintenance_scheduler(self):
+        """Start periodic maintenance scheduler for rides"""
+        def maintenance_worker():
+            """Schedule periodic maintenance for rides"""
+            while not self.clock.should_stop():
+                # Wait for some time before scheduling maintenance
+                self.clock.sleep_minutes(random.randint(60, 120))
+                
+                with self._rides_lock:
+                    # Pick a random ride for maintenance
+                    if self._rides:
+                        ride = random.choice(self._rides)
+                        # Only schedule if ride is operational
+                        if ride.is_operational():
+                            maintenance_duration = random.randint(15, 30)
+                            print(f"[SCHEDULER] Scheduling {maintenance_duration}min maintenance for {ride.name}")
+                            ride.schedule_maintenance(maintenance_duration)
+        
+        maintenance_thread = threading.Thread(
+            target=maintenance_worker,
+            daemon=True
+        )
+        maintenance_thread.start()
                 
     def close_all(self):
         """Close all facilities and stop all threads"""

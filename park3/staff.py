@@ -121,6 +121,12 @@ class RideOperator(Staff):
             if efficiency > 1.0:
                 # Could reduce board_window, but we'll just track performance
                 self.rides_operated += 1
+                # Track in metrics
+                if hasattr(self.park, 'metrics') and self.park.metrics:
+                    self.park.metrics.record_staff_action(
+                        self.staff_id, self.name, "ride_operator", "operated_ride",
+                        self.assigned_ride.name, self.clock.now(), efficiency
+                    )
         
         # Decrease energy
         self.energy -= random.uniform(1, 3)
@@ -172,6 +178,12 @@ class SecurityGuard(Staff):
         if random.random() < 0.8 + (efficiency * 0.1):  # Higher skill = better success
             self.children_found += 1
             print(f"[SECURITY] {self.name} reunited lost child with family!")
+            # Track in metrics
+            if hasattr(self.park, 'metrics') and self.park.metrics:
+                self.park.metrics.record_staff_action(
+                    self.staff_id, self.name, "security", "found_child",
+                    self.patrol_area, self.clock.now(), efficiency
+                )
         else:
             print(f"[SECURITY] {self.name} escalating search...")
         
@@ -193,6 +205,13 @@ class SecurityGuard(Staff):
         self.energy -= 8
         
         print(f"[SECURITY] {self.name} resolved {incident}")
+        
+        # Track in metrics
+        if hasattr(self.park, 'metrics') and self.park.metrics:
+            self.park.metrics.record_staff_action(
+                self.staff_id, self.name, "security", f"incident_{incident}",
+                self.patrol_area, self.clock.now(), efficiency
+            )
 
 # ============================================================================
 # Janitor
@@ -248,6 +267,13 @@ class Janitor(Staff):
         
         self.areas_cleaned += 1
         self.energy -= 5
+        
+        # Track in metrics
+        if hasattr(self.park, 'metrics') and self.park.metrics:
+            self.park.metrics.record_staff_action(
+                self.staff_id, self.name, "janitor", "cleaned_zone",
+                self.assigned_zone, self.clock.now(), efficiency
+            )
 
 # ============================================================================
 # Cleanliness Manager
@@ -258,8 +284,9 @@ class CleanlinessManager:
     Tracks cleanliness of different park zones.
     Visitors decrease cleanliness, janitors increase it.
     """
-    def __init__(self):
+    def __init__(self, metrics=None):
         self._lock = threading.Lock()
+        self.metrics = metrics
         
         # Zone cleanliness (0-100)
         self._zones = {
@@ -300,6 +327,12 @@ class CleanlinessManager:
                     traffic = self._traffic_count.get(zone, 0)
                     degradation = min(5, traffic * 0.1)
                     self._zones[zone] = max(0, self._zones[zone] - degradation)
+                    
+                    # Log cleanliness to metrics
+                    if self.metrics:
+                        self.metrics.record_cleanliness(
+                            zone, self._zones[zone], clock.now()
+                        )
                     
                 # Reset traffic count
                 self._traffic_count.clear()
