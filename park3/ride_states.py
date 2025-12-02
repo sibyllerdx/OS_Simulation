@@ -10,6 +10,7 @@ Implements different operational states for rides:
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import random
 
 class RideState(ABC):
     """Base interface for all ride states."""
@@ -131,6 +132,13 @@ class BrokenState(RideState):
         if self._remaining <= 0:
             print(f"[FIXED] {self.ride.name} is operational again!")
             self.ride.transition_to(self.ride.open)
+                # Schedule preventive maintenance after repair
+            if random.random() < 0.3:  # 30% chance
+                maintenance_time = random.randint(10, 20)
+                print(f"[MAINTENANCE] Scheduling post-repair maintenance for {self.ride.name}")
+                self.ride.schedule_maintenance(maintenance_time)
+            else:
+                self.ride.transition_to(self.ride.open)
 
 
 class MaintenanceState(RideState):
