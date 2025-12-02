@@ -137,6 +137,15 @@ class SocialVisitor(threading.Thread, ABC):
             if self.location_tracker:
                 self.location_tracker.update_location(self.vid, Location.RIDE, ride.name)
             
+            # Track group activity
+            if self.group_manager and self.group_manager.is_in_group(self.vid):
+                group = self.group_manager.get_visitor_group(self.vid)
+                if group and self.park.metrics:
+                    self.park.metrics.record_group_activity(
+                        group.group_id, 'ride', ride.name, 
+                        self.clock.now(), group.size()
+                    )
+            
             self.park.join_ride_queue(self, ride)
             
             while ride.queue.check_person_in(self):
@@ -171,6 +180,15 @@ class SocialVisitor(threading.Thread, ABC):
         if self.location_tracker:
             self.location_tracker.update_location(self.vid, Location.FOOD, facility.name)
         
+        # Track group activity
+        if self.group_manager and self.group_manager.is_in_group(self.vid):
+            group = self.group_manager.get_visitor_group(self.vid)
+            if group and self.park.metrics:
+                self.park.metrics.record_group_activity(
+                    group.group_id, 'food', facility.name,
+                    self.clock.now(), group.size()
+                )
+        
         self.park.join_food_queue(self, facility)
         
         while facility.queue.check_person_in(self):
@@ -186,6 +204,15 @@ class SocialVisitor(threading.Thread, ABC):
         
         if self.location_tracker:
             self.location_tracker.update_location(self.vid, Location.MERCH, stand.name)
+        
+        # Track group activity
+        if self.group_manager and self.group_manager.is_in_group(self.vid):
+            group = self.group_manager.get_visitor_group(self.vid)
+            if group and self.park.metrics:
+                self.park.metrics.record_group_activity(
+                    group.group_id, 'merch', stand.name,
+                    self.clock.now(), group.size()
+                )
         
         self.park.join_merch_queue(self, stand)
         

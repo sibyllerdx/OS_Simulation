@@ -2,7 +2,10 @@ from PIL import Image, ImageDraw, ImageFont
 import matplotlib
 matplotlib.use('TkAgg')  
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
 import threading
+import sys
+import os
 
 class ParkUI:
     """
@@ -45,11 +48,101 @@ class ParkUI:
         plt.ion()  # Turn on interactive mode
         fig = plt.figure(figsize=(14, 8))
         
+        # Add window close event handler
+        def on_window_close(event):
+            """Handle window close event"""
+            print("\n🛑 Window closed - stopping simulation...")
+            self.running = False
+            self.clock.stop()
+            # Force exit the program
+            os._exit(0)
+        
+        fig.canvas.mpl_connect('close_event', on_window_close)
+        
+        # Add "Exit Simulation" button
+        ax_button = plt.axes([0.85, 0.02, 0.12, 0.04])  # [left, bottom, width, height]
+        btn_exit = Button(ax_button, 'Exit Simulation', color='#ff6b6b', hovercolor='#ff5252')
+        
+        def on_exit_click(event):
+            """Handle exit button click"""
+            print("\n🛑 Exit button clicked - stopping simulation...")
+            self.running = False
+            self.clock.stop()
+            plt.close('all')  # Close all figures
+            # Force exit the program
+            os._exit(0)
+        
+        btn_exit.on_clicked(on_exit_click)
+        
         try:
-            while self.running and not self.clock.should_stop():
-                # Check if simulation time is complete
-                if self.clock.now() >= 480:  # PARK_HOURS
-                    print("\nSimulation time completed!")
+            while self.running:
+                current_time = self.clock.now()
+                
+                # Check if simulation time is complete (check earlier, at 479 to be safe)
+                if current_time >= 479 or self.clock.should_stop():
+                    print(f"\nSimulation approaching end at minute {current_time}...")
+                    
+                    # Draw final state
+                    park_image = Image.new('RGB', (width, height), color='#90EE90')
+                    draw = ImageDraw.Draw(park_image, 'RGBA')
+                    
+                    try:
+                        self._draw_title(draw)
+                        self._draw_capacity_bar(draw)
+                        self._draw_rides(draw, ride_positions)
+                        self._draw_facilities(draw, facility_positions)
+                        self._draw_metrics(draw)
+                    except Exception as draw_error:
+                        print(f"Error drawing final state: {draw_error}")
+                    
+                    # Add "SIMULATION COMPLETE" message
+                    try:
+                        from PIL import ImageFont
+                        font = ImageFont.truetype("arial.ttf", 48)
+                    except:
+                        font = None
+                    
+                    # Semi-transparent overlay
+                    overlay = Image.new('RGBA', (width, height), (0, 0, 0, 150))
+                    draw_overlay = ImageDraw.Draw(overlay)
+                    if font:
+                        draw_overlay.text((400, 350), "SIMULATION COMPLETE", fill=(255, 255, 255, 255), font=font)
+                    else:
+                        draw_overlay.text((500, 350), "SIMULATION COMPLETE", fill=(255, 255, 255, 255))
+                    
+                    park_image = Image.alpha_composite(park_image.convert('RGBA'), overlay)
+                    
+                    # Display final state
+                    plt.clf()
+                    
+                    # Draw the final park image
+                    ax_main = plt.axes([0.05, 0.15, 0.9, 0.8])
+                    ax_main.imshow(park_image)
+                    ax_main.axis('off')
+                    
+                    # Re-add the close button for final screen
+                    ax_button_final = plt.axes([0.4, 0.05, 0.2, 0.05])
+                    btn_close = Button(ax_button_final, 'Close Window', color='#4CAF50', hovercolor='#45a049')
+                    
+                    def on_close_click(event):
+                        print("\nClosing simulation window...")
+                        self.running = False
+                        plt.close('all')
+                    
+                    btn_close.on_clicked(on_close_click)
+                    
+                    plt.draw()
+                    
+                    print(f"Simulation ended at minute {current_time}")
+                    print("Click 'Close Window' button or close the window to continue...")
+                    
+                    # Keep window open until button is clicked or window is closed
+                    try:
+                        plt.show(block=True)  # Block until window is closed
+                    except:
+                        pass
+                    
+                    self.running = False
                     break
                     
                 # Create new image
@@ -73,16 +166,33 @@ class ParkUI:
                 
                 # Display the image
                 plt.clf()
-                plt.imshow(park_image)
-                plt.axis('off')
+                
+                # Draw the park image
+                ax_main = plt.axes([0.05, 0.1, 0.9, 0.85])  # [left, bottom, width, height]
+                ax_main.imshow(park_image)
+                ax_main.axis('off')
+                
+                # Add the exit button
+                ax_button = plt.axes([0.85, 0.02, 0.12, 0.04])
+                btn_exit = Button(ax_button, 'Exit Simulation', color='#ff6b6b', hovercolor='#ff5252')
+                btn_exit.on_clicked(on_exit_click)
+                
                 plt.draw()
-                plt.pause(0.5)  # Update every 0.5 seconds
+                
+                # Use non-blocking pause with timeout
+                try:
+                    plt.pause(0.5)  # Update every 0.5 seconds
+                except:
+                    # If window is closed, stop gracefully
+                    self.running = False
+                    break
                 
         except Exception as e:
             print(f"UI Error: {e}")
             import traceback
             traceback.print_exc()
         finally:
+            print("UI shutting down...")
             plt.close('all')
     
     def _calculate_ride_positions(self):

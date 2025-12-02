@@ -181,7 +181,7 @@ if __name__ == "__main__":
     print(f"  Initial Groups: {NUM_INITIAL_GROUPS}")
     
     # Initialize systems
-    clock = Clock(speed_factor=SPEED_FACTOR)
+    clock = Clock(speed_factor=SPEED_FACTOR, max_minutes=PARK_HOURS)
     metrics = Metrics(db_path="park_metrics.sqlite")
     
     # Social systems
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     
     # Staff systems
     print("Initializing staff systems...")
-    cleanliness_manager = CleanlinessManager()
+    cleanliness_manager = CleanlinessManager(metrics=metrics)
     
     # Create park
     park = Park(clock, metrics)
@@ -248,9 +248,16 @@ if __name__ == "__main__":
     # Register groups
     for group_info in initial_groups:
         if group_info['member_ids']:
-            group_manager.create_group(
+            group_id = group_manager.create_group(
                 group_info['type'],
                 group_info['member_ids']
+            )
+            # Track group creation in metrics
+            metrics.record_social_group(
+                group_id, 
+                group_info['type'].value, 
+                len(group_info['member_ids']),
+                clock.now()
             )
     
     # Create UI
@@ -270,6 +277,7 @@ if __name__ == "__main__":
     park.start_all_merch_stands()
     staff_manager.start_all_staff()
     park.start_cleanliness_degradation()
+    park.start_maintenance_scheduler()
     arrival_gen.start()
     
     # Run

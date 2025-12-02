@@ -22,6 +22,19 @@ class Metrics:
         self.total_merch_revenue = 0.0
 
         self.bathroom_visits = defaultdict(int)
+        
+        # Social group tracking
+        self.group_activities = []  # Track group activities together
+        
+        # Staff performance tracking
+        self.staff_actions = []  # Track staff actions (cleaning, incidents, etc.)
+        
+        # Ride incidents tracking
+        self.ride_breakdowns = []  # Track when rides break down
+        self.ride_maintenance = []  # Track scheduled maintenance
+        
+        # Cleanliness tracking
+        self.cleanliness_logs = []  # Track cleanliness over time
 
 
         # SQLite setup
@@ -82,6 +95,65 @@ class Metrics:
                     product TEXT,
                     minute INTEGER,
                     amount REAL
+                )
+            """)
+            
+            # Social groups table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS social_groups (
+                    group_id INTEGER,
+                    group_type TEXT,
+                    group_size INTEGER,
+                    created_minute INTEGER
+                )
+            """)
+            
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS group_activities (
+                    group_id INTEGER,
+                    activity_type TEXT,
+                    location TEXT,
+                    minute INTEGER,
+                    member_count INTEGER
+                )
+            """)
+            
+            # Staff performance tables
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS staff_actions (
+                    staff_id INTEGER,
+                    staff_name TEXT,
+                    staff_type TEXT,
+                    action_type TEXT,
+                    location TEXT,
+                    minute INTEGER,
+                    efficiency REAL
+                )
+            """)
+            
+            # Ride incidents tables
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS ride_breakdowns (
+                    ride_name TEXT,
+                    minute INTEGER,
+                    repair_duration INTEGER
+                )
+            """)
+            
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS ride_maintenance (
+                    ride_name TEXT,
+                    minute INTEGER,
+                    maintenance_duration INTEGER
+                )
+            """)
+            
+            # Cleanliness tracking
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS cleanliness_logs (
+                    zone TEXT,
+                    cleanliness_level REAL,
+                    minute INTEGER
                 )
             """)
 
@@ -178,6 +250,97 @@ class Metrics:
                     "VALUES (?, ?, ?, ?, ?)",
                     (visitor_id, stand_name, product, minute, amount)
                 )
+    
+    def record_social_group(self, group_id, group_type, group_size, minute):
+        """Record creation of a social group"""
+        with self.lock:
+            if self.conn is not None:
+                self._insert(
+                    "INSERT INTO social_groups (group_id, group_type, group_size, created_minute) "
+                    "VALUES (?, ?, ?, ?)",
+                    (group_id, group_type, group_size, minute)
+                )
+    
+    def record_group_activity(self, group_id, activity_type, location, minute, member_count):
+        """Record a group doing an activity together"""
+        with self.lock:
+            self.group_activities.append({
+                'group_id': group_id,
+                'activity_type': activity_type,
+                'location': location,
+                'minute': minute,
+                'member_count': member_count
+            })
+            if self.conn is not None:
+                self._insert(
+                    "INSERT INTO group_activities (group_id, activity_type, location, minute, member_count) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (group_id, activity_type, location, minute, member_count)
+                )
+    
+    def record_staff_action(self, staff_id, staff_name, staff_type, action_type, location, minute, efficiency=1.0):
+        """Record a staff member performing an action"""
+        with self.lock:
+            self.staff_actions.append({
+                'staff_id': staff_id,
+                'staff_name': staff_name,
+                'staff_type': staff_type,
+                'action_type': action_type,
+                'location': location,
+                'minute': minute,
+                'efficiency': efficiency
+            })
+            if self.conn is not None:
+                self._insert(
+                    "INSERT INTO staff_actions (staff_id, staff_name, staff_type, action_type, location, minute, efficiency) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (staff_id, staff_name, staff_type, action_type, location, minute, efficiency)
+                )
+    
+    def record_ride_breakdown(self, ride_name, minute, repair_duration):
+        """Record a ride breaking down"""
+        with self.lock:
+            self.ride_breakdowns.append({
+                'ride_name': ride_name,
+                'minute': minute,
+                'repair_duration': repair_duration
+            })
+            if self.conn is not None:
+                self._insert(
+                    "INSERT INTO ride_breakdowns (ride_name, minute, repair_duration) "
+                    "VALUES (?, ?, ?)",
+                    (ride_name, minute, repair_duration)
+                )
+    
+    def record_ride_maintenance(self, ride_name, minute, maintenance_duration):
+        """Record scheduled ride maintenance"""
+        with self.lock:
+            self.ride_maintenance.append({
+                'ride_name': ride_name,
+                'minute': minute,
+                'maintenance_duration': maintenance_duration
+            })
+            if self.conn is not None:
+                self._insert(
+                    "INSERT INTO ride_maintenance (ride_name, minute, maintenance_duration) "
+                    "VALUES (?, ?, ?)",
+                    (ride_name, minute, maintenance_duration)
+                )
+    
+    def record_cleanliness(self, zone, cleanliness_level, minute):
+        """Record cleanliness level of a zone"""
+        with self.lock:
+            self.cleanliness_logs.append({
+                'zone': zone,
+                'cleanliness_level': cleanliness_level,
+                'minute': minute
+            })
+            if self.conn is not None:
+                self._insert(
+                    "INSERT INTO cleanliness_logs (zone, cleanliness_level, minute) "
+                    "VALUES (?, ?, ?)",
+                    (zone, cleanliness_level, minute)
+                )
 
 
     # ---------- Aggregated summary ----------
@@ -193,7 +356,12 @@ class Metrics:
                         'merch_purchases': dict(self.merch_purchases),
                         'total_food_revenue': self.total_food_revenue,
                         'total_merch_revenue': self.total_merch_revenue,
-                        'total_revenue': self.total_revenue
+                        'total_revenue': self.total_revenue,
+                        'total_group_activities': len(self.group_activities),
+                        'total_staff_actions': len(self.staff_actions),
+                        'total_breakdowns': len(self.ride_breakdowns),
+                        'total_maintenance_events': len(self.ride_maintenance),
+                        'cleanliness_samples': len(self.cleanliness_logs)
                         }
         
     def print_summary(self):
@@ -218,3 +386,11 @@ class Metrics:
 
         print(f"Merch Revenue: ${summary['total_merch_revenue']:.2f}")
         print(f"TOTAL Revenue: ${summary['total_revenue']:.2f}")
+        
+        # New metrics
+        print(f"\nSocial & Operations:")
+        print(f"  Group Activities Logged: {summary['total_group_activities']}")
+        print(f"  Staff Actions Logged: {summary['total_staff_actions']}")
+        print(f"  Ride Breakdowns: {summary['total_breakdowns']}")
+        print(f"  Maintenance Events: {summary['total_maintenance_events']}")
+        print(f"  Cleanliness Samples: {summary['cleanliness_samples']}")

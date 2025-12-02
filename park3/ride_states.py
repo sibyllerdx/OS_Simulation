@@ -116,6 +116,12 @@ class BrokenState(RideState):
             self._remaining = 15  # Default repair time
         
         print(f"[ALERT] {self.ride.name} has BROKEN DOWN! Repair time: {self._remaining} minutes")
+        
+        # Track breakdown in metrics
+        if hasattr(self.ride, 'metrics') and self.ride.metrics:
+            self.ride.metrics.record_ride_breakdown(
+                self.ride.name, self.ride.clock.now(), self._remaining
+            )
 
     def tick(self):
         """Count down repair time"""
@@ -142,6 +148,12 @@ class MaintenanceState(RideState):
     def on_enter(self):
         """Notify of maintenance start"""
         print(f"[MAINTENANCE] {self.ride.name} closed for {self._remaining} minutes of maintenance")
+        
+        # Track maintenance in metrics
+        if hasattr(self.ride, 'metrics') and self.ride.metrics:
+            self.ride.metrics.record_ride_maintenance(
+                self.ride.name, self.ride.clock.now(), self._remaining
+            )
 
     def tick(self):
         """Count down maintenance time"""
