@@ -39,6 +39,12 @@ A live, dynamic user interface that displays:
 - Visitor statistics
 - Park-level summaries
 
+
+## Requirements
+It is necessary to install the requirements that can be found in the requirements.txt file
+
+- pip install -r requirements.txt 
+
 ## File Structure
 Core Logic
 
