@@ -1,8 +1,8 @@
 """
 Simplified Social System - Groups Only
 ======================================
-Just tracks pre-formed groups (families, friends) without dynamic friendship formation.
-Much simpler implementation focused on group behavior.
+Just tracks pre-formed groups (families, friends)
+Speicifies the group behaviour coordinator, group manager, and location tracker.
 """
 
 import threading
@@ -10,9 +10,8 @@ from typing import Set, Optional, List
 from enum import Enum
 from collections import defaultdict
 
-# ============================================================================
-# Location Tracking (Simplified)
-# ============================================================================
+
+# Location Tracking 
 
 class Location(Enum):
     """Possible locations in the park"""
@@ -54,9 +53,7 @@ class LocationTracker:
             return dict(summary)
 
 
-# ============================================================================
-# Group Management (Simplified)
-# ============================================================================
+# Group Management 
 
 class GroupType(Enum):
     """Types of social groups"""
@@ -173,9 +170,7 @@ class GroupManager:
             }
 
 
-# ============================================================================
 # Group Behavior Coordinator
-# ============================================================================
 
 class GroupCoordinator:
     """

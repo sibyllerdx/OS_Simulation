@@ -11,9 +11,7 @@ from enum import Enum
 from abc import ABC, abstractmethod
 from collections import defaultdict
 
-# ============================================================================
 # Staff Types and Attributes
-# ============================================================================
 
 class StaffType(Enum):
     """Types of staff members"""
@@ -28,9 +26,8 @@ class StaffSkill(Enum):
     EXPERIENCED = "experienced"  # Faster, more efficient
     EXPERT = "expert"        # Best performance
 
-# ============================================================================
+
 # Base Staff Class
-# ============================================================================
 
 class Staff(threading.Thread, ABC):
     """Base class for all staff members"""
@@ -87,9 +84,7 @@ class Staff(threading.Thread, ABC):
             # Small pause between tasks
             self.clock.sleep_minutes(random.randint(1, 3))
 
-# ============================================================================
 # Ride Operator
-# ============================================================================
 
 class RideOperator(Staff):
     """
@@ -134,9 +129,7 @@ class RideOperator(Staff):
         # Monitor ride
         self.clock.sleep_minutes(random.randint(3, 7))
 
-# ============================================================================
 # Security Guard
-# ============================================================================
 
 class SecurityGuard(Staff):
     """
@@ -213,9 +206,7 @@ class SecurityGuard(Staff):
                 self.patrol_area, self.clock.now(), efficiency
             )
 
-# ============================================================================
 # Janitor
-# ============================================================================
 
 class Janitor(Staff):
     """
@@ -275,9 +266,7 @@ class Janitor(Staff):
                 self.assigned_zone, self.clock.now(), efficiency
             )
 
-# ============================================================================
 # Cleanliness Manager
-# ============================================================================
 
 class CleanlinessManager:
     """
@@ -352,9 +341,7 @@ class CleanlinessManager:
                 'average': self.get_average_cleanliness()
             }
 
-# ============================================================================
 # Staff Manager
-# ============================================================================
 
 class StaffManager:
     """

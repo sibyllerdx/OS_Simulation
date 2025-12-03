@@ -52,7 +52,7 @@ class Metrics:
             self.conn = sqlite3.connect(db_path, check_same_thread=False)
             self._init_db()
 
-    # ---------- SQLite helpers ----------
+    # SQLite helpers 
 
     def _init_db(self):
         """Create tables if they don't already exist."""
@@ -180,7 +180,7 @@ class Metrics:
                 self.conn.close()
                 self.conn = None
 
-    # ---------- Metrics recording ----------
+    # Metrics recording 
 
     def record_arrival(self, visitor_id, minute, visitor_type):
         """Record a visitor entering the park"""
@@ -397,7 +397,7 @@ class Metrics:
             self.max_time = max(self.max_time, minute)
 
 
-    # ---------- Aggregated summary ----------
+    # Aggregated summary 
 
     def get_summary(self):
         """Get summary statistics from in-memory aggregations."""

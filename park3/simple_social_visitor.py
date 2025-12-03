@@ -2,7 +2,7 @@
 Simplified Social Visitor - Groups Only
 ========================================
 Visitors that belong to pre-formed groups and coordinate with each other.
-No dynamic friendship formation.
+They interact with the park's rides, food facilities, merch stands, and bathrooms,
 """
 
 import threading
@@ -234,9 +234,7 @@ class SocialVisitor(threading.Thread, ABC):
         self.energy = min(10, self.energy + random.uniform(1, 2))
 
 
-# ============================================================================
 # Concrete Visitor Types
-# ============================================================================
 
 class SocialChild(SocialVisitor):
     def __init__(self, vid, park, clock, metrics=None,
@@ -314,9 +312,7 @@ class SocialAdrenalineAddict(SocialVisitor):
             self.go_to_ride()
 
 
-# ============================================================================
 # Factories
-# ============================================================================
 
 class SocialVisitorCreator(ABC):
     @abstractmethod
