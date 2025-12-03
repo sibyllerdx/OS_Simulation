@@ -87,6 +87,15 @@ class BoardingState(RideState):
         if batch:
             # We have riders - run the ride cycle
             print(f"[{self.ride.name}] Boarding {len(batch)} riders...")
+            
+            # Record boarding events for metrics
+            if self.ride.metrics:
+                current_time = self.ride.clock.now()
+                for visitor in batch:
+                    self.ride.metrics.record_ride_boarding(
+                        visitor.vid, self.ride.name, current_time
+                    )
+            
             self.ride._run_cycle(batch)
             
             # After cycle completes, go back to OPEN
@@ -132,13 +141,6 @@ class BrokenState(RideState):
         if self._remaining <= 0:
             print(f"[FIXED] {self.ride.name} is operational again!")
             self.ride.transition_to(self.ride.open)
-                # Schedule preventive maintenance after repair
-            if random.random() < 0.3:  # 30% chance
-                maintenance_time = random.randint(10, 20)
-                print(f"[MAINTENANCE] Scheduling post-repair maintenance for {self.ride.name}")
-                self.ride.schedule_maintenance(maintenance_time)
-            else:
-                self.ride.transition_to(self.ride.open)
 
 
 class MaintenanceState(RideState):

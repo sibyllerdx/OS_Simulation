@@ -85,6 +85,15 @@ class Park:
         """Add a visitor to a ride's queue"""
         ride.queue.enqueue(visitor, priority=visitor.has_fastpass)
         
+        # Record queue entry for metrics
+        if self.metrics:
+            self.metrics.record_ride_queue_entry(
+                visitor.vid,
+                ride.name,
+                self.clock.now(),
+                ride.queue.size()
+            )
+        
     def join_food_queue(self, visitor, facility):
         """Add a visitor to a food facility's queue"""
         facility.queue.add_person(visitor)
@@ -156,8 +165,8 @@ class Park:
         def maintenance_worker():
             """Schedule periodic maintenance for rides"""
             while not self.clock.should_stop():
-                # Wait for some time before scheduling maintenance
-                self.clock.sleep_minutes(random.randint(60, 120))
+                # Wait for some time before scheduling maintenance (2-4 hours)
+                self.clock.sleep_minutes(random.randint(120, 240))
                 
                 with self._rides_lock:
                     # Pick a random ride for maintenance

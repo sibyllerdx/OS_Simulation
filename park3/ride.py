@@ -57,6 +57,13 @@ class Ride(threading.Thread):
         """Get the current state name"""
         with self._lock:
             return self._current_state.name()
+    
+    def get_state_time_remaining(self) -> int:
+        """Get time remaining for current state (if applicable)"""
+        with self._lock:
+            if hasattr(self._current_state, '_remaining'):
+                return self._current_state._remaining
+            return 0
         
     def run(self):
         """Main ride operation loop - delegates to current state"""
