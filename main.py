@@ -60,15 +60,15 @@ def create_initial_groups(num_groups=30):
 
 def create_rides(clock, metrics):
     rides_config = [
-        ('RollerCoaster', 24, 5, 0.0015, 90, 3, 140),     # 90min repair (1.5 hours)
+        ('RollerCoaster', 24, 5, 0.015, 90, 3, 140),     # 90min repair (1.5 hours)
         ('DropTower', 16, 4, 0.002, 75, 2, 145),          # 75min repair
         ('FerrisWheel', 32, 8, 0.001, 60, 4, 0),          # 60min repair (1 hour)
         ('HauntedHouse', 20, 6, 0.0015, 80, 3, 140),      # 80min repair
-        ('SpinningTeacups', 16, 4, 0.0018, 70, 2, 100),   # 70min repair
+        ('SpinningTeacups', 16, 4, 0.018, 70, 2, 100),   # 70min repair
         ('BumperCars', 20, 5, 0.002, 85, 3, 110),         # 85min repair
-        ('SplashMountain', 28, 7, 0.0018, 100, 4, 120),   # 100min repair
-        ('SpaceSimulator', 12, 6, 0.003, 120, 2, 120),    # 120min repair (2 hours)
-        ('CarouselHorses', 24, 5, 0.001, 65, 3, 0),       # 65min repair
+        ('SplashMountain', 28, 7, 0.1, 100, 4, 120),   # 100min repair
+        ('SpaceSimulator', 12, 6, 0.03, 120, 2, 120),    # 120min repair (2 hours)
+        ('CarouselHorses', 24, 5, 0.01, 65, 3, 0),       # 65min repair
     ]
     
     rides = []
