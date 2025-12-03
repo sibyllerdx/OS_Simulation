@@ -51,9 +51,33 @@ class ParkUI:
         # Add window close event handler
         def on_window_close(event):
             """Handle window close event"""
-            print("\n🛑 Window closed - stopping simulation...")
+            print("\n" + "="*60)
+            print("🛑 WINDOW CLOSED - STOPPING SIMULATION")
+            print("="*60)
             self.running = False
             self.clock.stop()
+            
+            # Generate plots before exiting
+            try:
+                print("\n📊 Generating graphs...")
+                fig.suptitle('Generating graphs...', fontsize=16, fontweight='bold')
+                plt.draw()
+                plt.pause(0.1)
+                
+                from park3.plots import generate_plots
+                generate_plots(self.metrics, output_dir="graphs")
+                
+                print("\n" + "="*60)
+                print("✅ SIMULATION COMPLETE!")
+                print("="*60)
+                print("All graphs saved to 'graphs/' directory\n")
+            except Exception as e:
+                print(f"❌ Error generating plots: {e}")
+            
+            # Close metrics database
+            if self.metrics:
+                self.metrics.close()
+            
             # Force exit the program
             os._exit(0)
         
@@ -65,10 +89,35 @@ class ParkUI:
         
         def on_exit_click(event):
             """Handle exit button click"""
-            print("\n🛑 Exit button clicked - stopping simulation...")
+            print("\n" + "="*60)
+            print("🛑 EXIT BUTTON CLICKED - STOPPING SIMULATION")
+            print("="*60)
             self.running = False
             self.clock.stop()
+            
+            # Generate plots before exiting
+            try:
+                print("\n📊 Generating graphs...")
+                fig.suptitle('Generating graphs...', fontsize=16, fontweight='bold')
+                plt.draw()
+                plt.pause(0.1)
+                
+                from park3.plots import generate_plots
+                generate_plots(self.metrics, output_dir="graphs")
+                
+                print("\n" + "="*60)
+                print("✅ SIMULATION COMPLETE!")
+                print("="*60)
+                print("All graphs saved to 'graphs/' directory\n")
+            except Exception as e:
+                print(f"❌ Error generating plots: {e}")
+            
+            # Close metrics database
+            if self.metrics:
+                self.metrics.close()
+            
             plt.close('all')  # Close all figures
+            
             # Force exit the program
             os._exit(0)
         
@@ -179,9 +228,9 @@ class ParkUI:
                 
                 plt.draw()
                 
-                # Use non-blocking pause with timeout
+                # Use non-blocking pause with timeout - faster updates
                 try:
-                    plt.pause(0.5)  # Update every 0.5 seconds
+                    plt.pause(0.2)  # Update every 0.2 seconds (5 times per second)
                 except:
                     # If window is closed, stop gracefully
                     self.running = False
@@ -330,15 +379,15 @@ class ParkUI:
             state = ride.get_state_name()
             queue_size = ride.queue.size()
             total_riders = ride.get_total_riders()
+            time_remaining = ride.get_state_time_remaining()
             
-            # Determine color based on state
-            if state == "BROKEN":
-                color = (200, 50, 50, 200)  # Red
-            elif state == "MAINTENANCE":
-                color = (200, 150, 50, 200)  # Orange
-            elif state == "BOARDING":
+            # Determine color based on state (case-insensitive comparison)
+            state_upper = state.upper()
+            if state_upper == "MAINTENANCE":
+                color = (255, 0, 0, 220)  # RED for maintenance
+            elif state_upper == "BOARDING":
                 color = (50, 150, 200, 200)  # Blue
-            else:  # OPEN
+            else:  # OPEN, BROKEN, or any other state - all shown as green
                 color = (50, 200, 50, 200)  # Green
             
             # Draw ride rectangle
@@ -354,8 +403,12 @@ class ParkUI:
             display_name = ride.name[:12] if len(ride.name) > 12 else ride.name
             draw.text((center_x - 50, center_y - 35), display_name, fill="white", font=font)
             
-            # Draw state
-            draw.text((center_x - 40, center_y - 15), state, fill="white", font=small_font)
+            # Draw state with time remaining if applicable
+            if time_remaining > 0 and state_upper in ["MAINTENANCE", "BROKEN"]:
+                state_text = f"{state} ({time_remaining}m)"
+                draw.text((center_x - 50, center_y - 15), state_text, fill="white", font=small_font)
+            else:
+                draw.text((center_x - 40, center_y - 15), state, fill="white", font=small_font)
             
             # Draw queue size
             draw.text((center_x - 40, center_y + 5), f"Queue: {queue_size}", 
@@ -416,41 +469,60 @@ class ParkUI:
             draw.rectangle([x, y, x + w, y + h], fill=color, outline="black", width=1)
     
     def _draw_metrics(self, draw):
-        """Draw summary metrics"""
+        """Draw summary metrics with new updates"""
         try:
-            font = ImageFont.truetype("arial.ttf", 14)
+            font = ImageFont.truetype("arial.ttf", 13)
+            small_font = ImageFont.truetype("arial.ttf", 11)
         except:
             font = ImageFont.load_default()
+            small_font = ImageFont.load_default()
         
         summary = self.metrics.get_summary()
         
-        # Metrics panel
-        panel_x = 900
-        panel_y = 600
+        # Metrics panel - made larger to fit new stats
+        panel_x = 850
+        panel_y = 580
+        panel_width = 520
+        panel_height = 200
         
-        draw.rectangle([panel_x - 10, panel_y - 10, panel_x + 450, panel_y + 180], 
-                      fill=(255, 255, 200, 220), outline="black", width=2)
+        draw.rectangle([panel_x - 10, panel_y - 10, panel_x + panel_width, panel_y + panel_height], 
+                      fill=(255, 255, 220, 230), outline="black", width=2)
         
-        draw.text((panel_x, panel_y), "📊 PARK STATISTICS", fill="black", font=font)
+        draw.text((panel_x + 150, panel_y), "📊 PARK STATISTICS", fill="black", font=font)
         
-        metrics_text = [
-            f"Total Visitors: {summary['total_visitors']}",
-            f"Visitors Left: {summary['total_exits']}",
-            f"Food Revenue: ${summary['total_food_revenue']:.2f}",
-            f"Merch Revenue: ${summary['total_merch_revenue']:.2f}",
-            f"Total Revenue: ${summary['total_revenue']:.2f}",
+        # Left column
+        metrics_left = [
+            f"👥 Total Visitors: {summary['total_visitors']}",
+            f"🚶 Visitors Left: {summary['total_exits']}",
+            f"🍔 Food Revenue: ${summary['total_food_revenue']:.2f}",
+            f"🛍️  Merch Revenue: ${summary['total_merch_revenue']:.2f}",
+            f"💰 Total Revenue: ${summary['total_revenue']:.2f}",
         ]
         
         y_offset = 25
-        for text in metrics_text:
-            draw.text((panel_x, panel_y + y_offset), text, fill="black", font=font)
-            y_offset += 25
+        for text in metrics_left:
+            draw.text((panel_x, panel_y + y_offset), text, fill="black", font=small_font)
+            y_offset += 22
         
-        # Most popular ride
+        # Right column - new operational metrics
+        metrics_right = [
+            f"👨‍👩‍👧‍👦 Group Activities: {summary['total_group_activities']}",
+            f"👷 Staff Actions: {summary['total_staff_actions']}",
+            f"🔧 Ride Breakdowns: {summary['total_breakdowns']}",
+            f"🛠️  Maintenance Events: {summary['total_maintenance_events']}",
+            f"🧹 Cleanliness Checks: {summary['cleanliness_samples']}",
+        ]
+        
+        y_offset = 25
+        for text in metrics_right:
+            draw.text((panel_x + 260, panel_y + y_offset), text, fill="black", font=small_font)
+            y_offset += 22
+        
+        # Most popular ride at bottom
         if summary['ride_counts']:
             most_popular = max(summary['ride_counts'].items(), key=lambda x: x[1])
-            draw.text((panel_x, panel_y + y_offset), 
-                     f"Most Popular: {most_popular[0]} ({most_popular[1]} rides)", 
+            draw.text((panel_x, panel_y + 140), 
+                     f"🎢 Most Popular: {most_popular[0]} ({most_popular[1]} rides)", 
                      fill="blue", font=font)
     
     def _value_to_color(self, value, min_value=0, max_value=100):

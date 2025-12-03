@@ -60,15 +60,15 @@ def create_initial_groups(num_groups=30):
 
 def create_rides(clock, metrics):
     rides_config = [
-        ('RollerCoaster', 24, 5, 0.03, 15, 3, 140),
-        ('DropTower', 16, 4, 0.04, 12, 2, 145),
-        ('FerrisWheel', 32, 8, 0.01, 10, 4, 0),
-        ('HauntedHouse', 20, 6, 0.02, 8, 3, 140),
-        ('SpinningTeacups', 16, 4, 0.02, 6, 2, 100),
-        ('BumperCars', 20, 5, 0.03, 7, 3, 110),
-        ('SplashMountain', 28, 7, 0.03, 14, 4, 120),
-        ('SpaceSimulator', 12, 6, 0.05, 20, 2, 120),
-        ('CarouselHorses', 24, 5, 0.01, 5, 3, 0),
+        ('RollerCoaster', 24, 5, 0.0015, 90, 3, 140),     # 90min repair (1.5 hours)
+        ('DropTower', 16, 4, 0.002, 75, 2, 145),          # 75min repair
+        ('FerrisWheel', 32, 8, 0.001, 60, 4, 0),          # 60min repair (1 hour)
+        ('HauntedHouse', 20, 6, 0.0015, 80, 3, 140),      # 80min repair
+        ('SpinningTeacups', 16, 4, 0.0018, 70, 2, 100),   # 70min repair
+        ('BumperCars', 20, 5, 0.002, 85, 3, 110),         # 85min repair
+        ('SplashMountain', 28, 7, 0.0018, 100, 4, 120),   # 100min repair
+        ('SpaceSimulator', 12, 6, 0.003, 120, 2, 120),    # 120min repair (2 hours)
+        ('CarouselHorses', 24, 5, 0.001, 65, 3, 0),       # 65min repair
     ]
     
     rides = []
@@ -361,5 +361,9 @@ if __name__ == "__main__":
         print("\n" + "="*60)
         print("SIMULATION COMPLETE")
         print("="*60 + "\n")
+        
+        # Generate plots
+        from park3.plots import generate_plots
+        generate_plots(metrics, output_dir="graphs")
         
         metrics.close()

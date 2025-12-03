@@ -35,6 +35,13 @@ class Metrics:
         
         # Cleanliness tracking
         self.cleanliness_logs = []  # Track cleanliness over time
+        
+        # NEW: Enhanced tracking for plotting
+        self.ride_queue_entries = []  # {visitor_id, ride_name, minute, queue_length}
+        self.ride_boardings = []  # {visitor_id, ride_name, minute}
+        self.visitor_data = {}  # visitor_id -> {arrival, exit, rides_taken, money_spent}
+        self.facility_revenue = defaultdict(float)  # facility_name -> total_revenue
+        self.max_time = 0  # Maximum simulation time seen
 
 
         # SQLite setup
@@ -103,8 +110,7 @@ class Metrics:
                 CREATE TABLE IF NOT EXISTS social_groups (
                     group_id INTEGER,
                     group_type TEXT,
-                    group_size INTEGER,
-                    created_minute INTEGER
+                    group_size INTEGER
                 )
             """)
             
@@ -184,6 +190,15 @@ class Metrics:
                 'minute': minute,
                 'type': visitor_type
             })
+            # Track per-visitor data
+            if visitor_id not in self.visitor_data:
+                self.visitor_data[visitor_id] = {
+                    'arrival': minute,
+                    'exit': None,
+                    'rides_taken': 0,
+                    'money_spent': 0.0
+                }
+            self.max_time = max(self.max_time, minute)
             if self.conn is not None:
                 self._insert(
                     "INSERT INTO visitor_arrivals (id, minute, type) VALUES (?, ?, ?)",
@@ -197,6 +212,10 @@ class Metrics:
                 'id': visitor_id,
                 'minute': minute
             })
+            # Update per-visitor data
+            if visitor_id in self.visitor_data:
+                self.visitor_data[visitor_id]['exit'] = minute
+            self.max_time = max(self.max_time, minute)
             if self.conn is not None:
                 self._insert(
                     "INSERT INTO visitor_exits (id, minute) VALUES (?, ?)",
@@ -217,6 +236,10 @@ class Metrics:
         """Record a visitor riding an attraction"""
         with self.lock:
             self.ride_counts[ride_name] += 1
+            # Update per-visitor ride count
+            if visitor_id in self.visitor_data:
+                self.visitor_data[visitor_id]['rides_taken'] += 1
+            self.max_time = max(self.max_time, minute)
             if self.conn is not None:
                 self._insert(
                     "INSERT INTO rides (visitor_id, ride_name, minute) VALUES (?, ?, ?)",
@@ -229,6 +252,11 @@ class Metrics:
             self.food_purchases[facility_name] += 1
             self.total_food_revenue += amount
             self.total_revenue += amount  # total = food + merch
+            # Update per-visitor spend and per-facility revenue
+            if visitor_id in self.visitor_data:
+                self.visitor_data[visitor_id]['money_spent'] += amount
+            self.facility_revenue[facility_name] += amount
+            self.max_time = max(self.max_time, minute)
 
             if self.conn is not None:
                 self._insert(
@@ -243,6 +271,11 @@ class Metrics:
             self.merch_purchases[stand_name] += 1
             self.total_merch_revenue += amount
             self.total_revenue += amount  # keep combined total
+            # Update per-visitor spend and per-facility revenue
+            if visitor_id in self.visitor_data:
+                self.visitor_data[visitor_id]['money_spent'] += amount
+            self.facility_revenue[stand_name] += amount
+            self.max_time = max(self.max_time, minute)
 
             if self.conn is not None:
                 self._insert(
@@ -256,9 +289,9 @@ class Metrics:
         with self.lock:
             if self.conn is not None:
                 self._insert(
-                    "INSERT INTO social_groups (group_id, group_type, group_size, created_minute) "
-                    "VALUES (?, ?, ?, ?)",
-                    (group_id, group_type, group_size, minute)
+                    "INSERT INTO social_groups (group_id, group_type, group_size) "
+                    "VALUES (?, ?, ?)",
+                    (group_id, group_type, group_size)
                 )
     
     def record_group_activity(self, group_id, activity_type, location, minute, member_count):
@@ -341,6 +374,27 @@ class Metrics:
                     "VALUES (?, ?, ?)",
                     (zone, cleanliness_level, minute)
                 )
+    
+    def record_ride_queue_entry(self, visitor_id, ride_name, minute, queue_length):
+        """Record when a visitor joins a ride queue"""
+        with self.lock:
+            self.ride_queue_entries.append({
+                'visitor_id': visitor_id,
+                'ride_name': ride_name,
+                'minute': minute,
+                'queue_length': queue_length
+            })
+            self.max_time = max(self.max_time, minute)
+    
+    def record_ride_boarding(self, visitor_id, ride_name, minute):
+        """Record when a visitor boards a ride"""
+        with self.lock:
+            self.ride_boardings.append({
+                'visitor_id': visitor_id,
+                'ride_name': ride_name,
+                'minute': minute
+            })
+            self.max_time = max(self.max_time, minute)
 
 
     # ---------- Aggregated summary ----------
@@ -394,3 +448,98 @@ class Metrics:
         print(f"  Ride Breakdowns: {summary['total_breakdowns']}")
         print(f"  Maintenance Events: {summary['total_maintenance_events']}")
         print(f"  Cleanliness Samples: {summary['cleanliness_samples']}")
+    
+    def get_analysis_data(self):
+        """
+        Prepare comprehensive analysis data for plotting.
+        Returns a dictionary with all metrics needed for visualization.
+        """
+        with self.lock:
+            # Calculate per-ride wait times
+            wait_times_by_ride = defaultdict(list)
+            
+            # Create a mapping of (visitor_id, ride_name) -> queue_entry_time
+            queue_entries = {}
+            for entry in self.ride_queue_entries:
+                key = (entry['visitor_id'], entry['ride_name'])
+                if key not in queue_entries:  # Keep first entry
+                    queue_entries[key] = entry['minute']
+            
+            # Match boardings to queue entries to calculate wait times
+            for boarding in self.ride_boardings:
+                key = (boarding['visitor_id'], boarding['ride_name'])
+                if key in queue_entries:
+                    wait_time = boarding['minute'] - queue_entries[key]
+                    wait_times_by_ride[boarding['ride_name']].append(wait_time)
+            
+            # Calculate average wait times per ride
+            avg_wait_times = {}
+            for ride_name, wait_list in wait_times_by_ride.items():
+                if wait_list:
+                    avg_wait_times[ride_name] = sum(wait_list) / len(wait_list)
+            
+            # Calculate per-visitor metrics
+            visitor_time_in_park = []
+            visitor_spend = []
+            visitor_rides_taken = []
+            visitor_ids = []
+            spend_vs_time = []  # [(time, spend), ...]
+            visitor_time_data = []  # [(visitor_id, time_in_park), ...] for sorting
+            
+            for vid, data in self.visitor_data.items():
+                if data['exit'] is not None and data['arrival'] is not None:
+                    time_in_park = data['exit'] - data['arrival']
+                    visitor_time_in_park.append(time_in_park)
+                    visitor_spend.append(data['money_spent'])
+                    visitor_rides_taken.append(data['rides_taken'])
+                    visitor_ids.append(vid)
+                    spend_vs_time.append((time_in_park, data['money_spent']))
+                    visitor_time_data.append((vid, time_in_park))
+            
+            # Sort visitor_time_data by time (least to most)
+            visitor_time_sorted = sorted(visitor_time_data, key=lambda x: x[1])
+            
+            # Calculate population over time
+            # Create events list: (minute, +1 for arrival, -1 for exit)
+            events = []
+            for arrival in self.visitor_arrivals:
+                events.append((arrival['minute'], 1))
+            for exit in self.visitor_exits:
+                events.append((exit['minute'], -1))
+            
+            # Sort by time
+            events.sort()
+            
+            # Build time series
+            population_over_time = []
+            current_pop = 0
+            current_minute = 0
+            
+            if events:
+                for minute, delta in events:
+                    # Fill gaps with current population
+                    while current_minute < minute:
+                        population_over_time.append((current_minute, current_pop))
+                        current_minute += 1
+                    current_pop += delta
+                    population_over_time.append((minute, current_pop))
+                    current_minute = minute + 1
+                
+                # Extend to max_time
+                while current_minute <= self.max_time:
+                    population_over_time.append((current_minute, current_pop))
+                    current_minute += 1
+            
+            return {
+                'ride_counts': dict(self.ride_counts),
+                'avg_wait_times': avg_wait_times,
+                'facility_revenue': dict(self.facility_revenue),
+                'visitor_time_in_park': visitor_time_in_park,
+                'visitor_spend': visitor_spend,
+                'visitor_rides_taken': visitor_rides_taken,
+                'visitor_ids': visitor_ids,
+                'spend_vs_time': spend_vs_time,
+                'visitor_time_sorted': visitor_time_sorted,
+                'population_over_time': population_over_time,
+                'max_time': self.max_time
+            }
